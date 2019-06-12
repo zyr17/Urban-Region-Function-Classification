@@ -33,13 +33,13 @@ train_visit = change_visit_shape(train_visit)
 test_visit = change_visit_shape(test_visit)
 train_image = train_image.transpose(0, 3, 1, 2)
 test_image = test_image.transpose(0, 3, 1, 2)
-
+'''
 train_visit = train_visit[:200]
 train_label = train_label[:200]
 train_image = train_image[:200]
 test_visit = test_visit[:100]
 test_image = test_image[:100]
-
+'''
 # use last 10% data as validation set
 val_line = len(train_visit) // 10 * 9
 val_visit = train_visit[val_line:]

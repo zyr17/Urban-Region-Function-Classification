@@ -127,6 +127,48 @@ class CNN(torch.nn.Module):
         #print(x.size())
         return x
 
+class concat_after(torch.nn.Module):
+    def __init__(self, inputlen = (7, 26, 24), outputlen = label_num):
+        super(CNN, self).__init__()
+        self.conv1 = torch.nn.Conv2d(inputlen[0], 100, 5, padding=2)
+        self.conv1 = torch.nn.Sequential(
+            torch.nn.Conv2d(inputlen[0], 100, 5, padding=2),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2)
+        )
+        self.conv2 = torch.nn.Sequential(
+            torch.nn.Conv2d(100, 200, 5, padding=2),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2, padding=(1, 0))
+        )
+        self.conv3 = torch.nn.Sequential(
+            torch.nn.Conv2d(200, 400, 5, padding=2),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2, padding=(1, 0))
+        )
+        self.conv4 = torch.nn.Sequential(
+            torch.nn.Conv2d(400, 800, 5, padding=2),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(2, padding=(0, 1))
+        )
+        self.fc1 = torch.nn.Sequential(
+            torch.nn.Linear(800 * 2 * 2, 160),
+            torch.nn.ReLU()
+        )
+        self.fc2 = torch.nn.Sequential(
+            torch.nn.Linear(160, outputlen),
+            torch.nn.Sigmoid()
+        )
+    def forward(self, inputs):
+        x = inputs # [B, 7, 26, 24]
+        x = self.conv1(x) # [B, 100, 13, 12]
+        x = self.conv2(x) # [B, 200, 7, 6]
+        x = self.conv3(x) # [B, 400, 4, 3]
+        x = self.conv4(x) # [B, 800, 2, 2]
+        x = self.fc1(x.reshape(-1, 800 * 2 * 2)) # [B, 160]
+        x = self.fc2(x) # [B, 9]
+        return x
+
 class VisitDataset(torch.utils.data.Dataset):
     def __init__(self, x, y):
         self.x = torch.tensor(x).float()
@@ -146,34 +188,31 @@ def Accuracy(x, y):
         if y[yi] < y[i]:
             yi = i
     return xi == yi
-'''
-#FC
+
 batch_size = 10
-train_dataset = VisitDataset(train_visit, train_label)
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True)
-test_dataset = VisitDataset(train_visit, train_label)
-test_loader = torch.utils.data.DataLoader(train_dataset, batch_size, False)
-val_dataset = VisitDataset(val_visit, val_label)
-val_loader = torch.utils.data.DataLoader(val_dataset, 100, True)
-model = cuda(FC())
-loss = torch.nn.MSELoss()
-'''
-#CNN
-train_visit = train_visit.reshape(-1, 7, 26, 24)
-val_visit = val_visit.reshape(-1, 7, 26, 24)
-test_visit = test_visit.reshape(-1, 7, 26, 24)
-batch_size = 10
+epoch_number = 100
+learning_rate = 0.00001
+modelname = 'CNN'
+
+if (modelname != 'FC'):
+    train_visit = train_visit.reshape(-1, 7, 26, 24)
+    val_visit = val_visit.reshape(-1, 7, 26, 24)
+    test_visit = test_visit.reshape(-1, 7, 26, 24)
 train_dataset = VisitDataset(train_visit, train_label)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True)
 test_dataset = VisitDataset(test_visit, np.zeros(len(test_visit)))
 test_loader = torch.utils.data.DataLoader(train_dataset, batch_size, False)
 val_dataset = VisitDataset(val_visit, val_label)
 val_loader = torch.utils.data.DataLoader(val_dataset, 100, True)
-model = cuda(CNN())
+if (modelname == 'CNN'):
+    model = CNN()
+elif (modelname == 'FC'):
+    model = FC()
+elif modelname == 'concat_after':
+    model = concat_after()
+model = cuda(model)
 loss = torch.nn.MSELoss()
-#'''
-epoch_number = 100
-learning_rate = 0.00001
+
 for epoch in range(epoch_number):
     print('epoch', epoch)
     start_time = time.clock()
@@ -218,4 +257,3 @@ for epoch in range(epoch_number):
             num += 1
     with open('data/results/' + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
         f.write('\n'.join(result))
-    

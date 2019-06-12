@@ -301,5 +301,5 @@ for epoch in range(epoch_number):
                     oneres = i
             result.append(str(num).zfill(6) + '\t00' + str(oneres + 1))
             num += 1
-    with open('data/results/' + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
+    with open('data/results/' + modelname + '_' + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
         f.write('\n'.join(result))

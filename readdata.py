@@ -234,5 +234,5 @@ if __name__ == '__main__':
     '''
     visit_data_expand('data/pickle/part/train_visit_with_id_0_10000.pkl', 'data/pickle/part/train_visit_0_10000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_10000_20000.pkl', 'data/pickle/part/train_visit_10000_20000.pkl')
-    #visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
-    #visit_data_expand('data/pickle/part/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
+    visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
+    visit_data_expand('data/pickle/part/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')

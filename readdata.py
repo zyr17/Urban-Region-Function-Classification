@@ -232,7 +232,35 @@ if __name__ == '__main__':
         'data/pickle/train_visit_30000_40000.bucket.pkl',
     ], 'train_visit.bucket.pkl')
     '''
+    '''
     visit_data_expand('data/pickle/part/train_visit_with_id_0_10000.pkl', 'data/pickle/part/train_visit_0_10000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_10000_20000.pkl', 'data/pickle/part/train_visit_10000_20000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
+    '''
+    filenames = [
+        'data/pickle/part/train_visit_0_10000.pkl',
+        'data/pickle/part/train_visit_10000_20000.pkl',
+        'data/pickle/part/train_visit_20000_30000.pkl',
+        'data/pickle/part/train_visit_30000_40000.pkl'
+    ]
+
+    res = open('result.txt', 'w')
+    '''
+    for filename in filenames:
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+            for one in data:
+                res.write(str(len(one)) + '\n')
+    '''
+    bucket = [0] * (26 * 7 * 24)
+    for filename in filenames:
+        with open(filename, 'rb') as f:
+            data = pickle.load(f)
+            print(filename)
+            for num, one in enumerate(data):
+                if (num % 1000 == 0):
+                    print(num)
+                for num in one:
+                    bucket[len(num)] += 1
+    res.write('\n'.join([str(x) for x in bucket]))

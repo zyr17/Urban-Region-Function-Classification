@@ -137,6 +137,30 @@ def concat(filenames, outputname):
     print(res.shape)
     pickle.dump(res, open(outputname, 'wb'))
 
+def visit_data_expand(filename, outputname):
+    with open(filename, 'rb') as f:
+        visit = pickle.load(f)
+    res = []
+    quick = np.array([-1] * 10000000, dtype = 'int16')
+    starttime = time.mktime(time.strptime('2018100100', '%Y%m%d%H'))
+    for num, one in enumerate(visit):
+        resone = []
+        for line in one:
+            line = line[1]
+            resline = []
+            for onetime in line:
+                nowtime = quick[onetime - 2010000000]
+                if nowtime == -1:
+                    nowtime = time.mktime(time.strptime(str(onetime), '%Y%m%d%H'))
+                    quick[onetime - 2010000000] = nowtime
+                pos = int((nowtime - starttime) / 60 / 60)
+                resline.append(pos)
+            resline = np.array(resline, dtype='int16')
+            resone.append(resline)
+        res.append(resone)
+        print(num)
+    pickle.dump(res, open(outputname, 'wb'))
+
 if __name__ == '__main__':
     ''' 
     read_train_data(0, 10000)
@@ -188,7 +212,7 @@ if __name__ == '__main__':
     res = visit2bucket('pickle/train_visit_20000_30000.pkl')
     res = visit2bucket('pickle/train_visit_30000_40000.pkl')
     '''
-
+    '''
     concat([
         'data/pickle/train_label_0_10000.pkl',
         'data/pickle/train_label_10000_20000.pkl',
@@ -207,3 +231,8 @@ if __name__ == '__main__':
         'data/pickle/train_visit_20000_30000.bucket.pkl',
         'data/pickle/train_visit_30000_40000.bucket.pkl',
     ], 'train_visit.bucket.pkl')
+    '''
+    visit_data_expand('data/pickle/part/train_visit_with_id_0_10000.pkl', 'data/pickle/part/train_visit_0_10000.pkl')
+    visit_data_expand('data/pickle/part/train_visit_with_id_10000_20000.pkl', 'data/pickle/part/train_visit_10000_20000.pkl')
+    #visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
+    #visit_data_expand('data/pickle/part/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')

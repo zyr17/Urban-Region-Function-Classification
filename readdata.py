@@ -257,7 +257,7 @@ if __name__ == '__main__':
     visit_data_expand('data/pickle/part/train_visit_with_id_0_10000.pkl', 'data/pickle/part/train_visit_0_10000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_10000_20000.pkl', 'data/pickle/part/train_visit_10000_20000.pkl')
     visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
-    visit_data_expand('data/pickle/part/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
+    visit_data_expand('E:/BaiduNetdiskDownload/初赛赛题/pickle/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
     '''
     filenames = [
         'data/pickle/part/train_visit_0_10000.pkl',
@@ -294,10 +294,11 @@ if __name__ == '__main__':
     for i in range(0, 40000, 10000):
         visit = 'data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000)
         label = 'data/pickle/part/train_label_%d_%d.pkl' % (i, i + 10000)
-        res = 'data/pickle/part/visitlines/%d_%d.pkl' % (i, i + 10000)
+        res = 'data/pickle/part/visitline_23/%d_%d.pkl' % (i, i + 10000)
         remove_short_expand(visit, label, res)
     '''
     '''
+    #combine vilitline
     totalv = []
     totall = []
     for i in range(0, 40000, 10000):
@@ -308,5 +309,20 @@ if __name__ == '__main__':
                 totalv.append(visit[num])
                 totall.append(label[num])
     totall = np.array(totall, dtype='int8')
-    pickle.dump([totalv, totall], open('data/pickle/part/visitline_23.pkl', 'wb'))
+    pickle.dump([totalv, totall], open('data/pickle/visitline_23.pkl', 'wb'))
+    '''
+    '''
+    #shuffle visitline
+    [train_x, train_y] = pickle.load(open('data/pickle/visitline_23.pkl', 'rb'))
+    print('read done')
+    zipped = list(zip(train_x, train_y))
+    print(len(zipped), zipped[0])
+    random.shuffle(zipped)
+    print('random')
+    [train_x, train_y] = list(zip(*zipped))
+    print('zip2')
+    train_y = np.array(train_y, dtype='int8')
+    print(len(train_x), len(train_y))
+    print(train_x[0], train_y[0])
+    pickle.dump([train_x, train_y], open('data/pickle/visitline_23_shuffle.pkl', 'wb'))
     '''

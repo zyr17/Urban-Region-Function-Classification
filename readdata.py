@@ -161,6 +161,27 @@ def visit_data_expand(filename, outputname):
         print(num)
     pickle.dump(res, open(outputname, 'wb'))
 
+def remove_short_expand(visitname, labelname, outputname, threshold = 23):
+    with open(visitname, 'rb') as f:
+        visits = pickle.load(f)
+    with open(labelname, 'rb') as f:
+        labels = pickle.load(f)
+    resvisit = []
+    reslabel = []
+    for num in range(len(visits)):
+        if num % 100 == 0:
+            print(num, len(resvisit))
+        visit = visits[num]
+        label = labels[num]
+        for line in visit:
+            if len(line) > threshold:
+                resvisit.append(line)
+                reslabel.append(label)
+    reslabel = np.array(reslabel, dtype='int8')
+    print('save', outputname)
+    with open(outputname, 'wb') as f:
+        pickle.dump([resvisit, reslabel], f)
+
 if __name__ == '__main__':
     ''' 
     read_train_data(0, 10000)
@@ -245,14 +266,17 @@ if __name__ == '__main__':
         'data/pickle/part/train_visit_30000_40000.pkl'
     ]
 
-    res = open('result.txt', 'w')
+    #res = open('result.txt', 'w')
     '''
+    #analyze num of ids for one input
     for filename in filenames:
         with open(filename, 'rb') as f:
             data = pickle.load(f)
             for one in data:
                 res.write(str(len(one)) + '\n')
     '''
+    '''
+    #analyze num of timestamp for one line
     bucket = [0] * (26 * 7 * 24)
     for filename in filenames:
         with open(filename, 'rb') as f:
@@ -264,3 +288,23 @@ if __name__ == '__main__':
                 for num in one:
                     bucket[len(num)] += 1
     res.write('\n'.join([str(x) for x in bucket]))
+    '''
+    '''
+    #long visitline
+    for i in range(0, 40000, 10000):
+        visit = 'data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000)
+        label = 'data/pickle/part/train_label_%d_%d.pkl' % (i, i + 10000)
+        res = 'data/pickle/part/visitlines/%d_%d.pkl' % (i, i + 10000)
+        remove_short_expand(visit, label, res)
+    '''
+    totalv = []
+    totall = []
+    for i in range(0, 40000, 10000):
+        with open('data/pickle/part/visitline_23/%d_%d.pkl' % (i, i + 10000), 'rb') as f:
+            [visit, label] = pickle.load(f)
+            print(i)
+            for num in range(len(visit)):
+                totalv.append(visit[num])
+                totall.append(label[num])
+    totall = np.array(totall, dtype='int8')
+    pickle.dump([totalv, totall], open('data/pickle/part/visitline_23.pkl', 'wb'))

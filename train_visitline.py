@@ -97,7 +97,7 @@ def Accuracy(x, y):
 
 if __name__ == '__main__':
     #filename = 'data/pickle/part/visitline_23/test.pkl'
-    filename = 'data/pickle/vilitline_23_shuffle.pkl'
+    filename = 'data/pickle/visitline_23_shuffle.pkl'
 
     train_line, raw_label = pickle.load(open(filename, 'rb'))
     train_label = np.zeros((len(raw_label), label_num))
@@ -105,8 +105,8 @@ if __name__ == '__main__':
         train_label[num][i - 1] = 1
     print('pickle load over')
 
-    train_line = train_line[:1000]
-    train_label = train_label[:1000]
+    #train_line = train_line[:1000]
+    #train_label = train_label[:1000]
     #pickle.dump([train_line, raw_label[:1000]], open('data/pickle/part/visitline_23/test.pkl', 'wb'))
 
     val_num = len(train_line) // 200 * 199
@@ -115,9 +115,9 @@ if __name__ == '__main__':
     train_line = train_line[:val_num]
     train_label = train_label[:val_num]
 
-    batch_size = 10
-    epoch_number = 10
-    learning_rate = 0.00001
+    batch_size = 100
+    epoch_number = 100
+    learning_rate = 0.000002
 
     train_dataset = LineDataset(train_line, train_label)
     val_dataset = LineDataset(val_line, val_label)
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     print('start training')
     last_save_time = time.time()
     last_batch_time = time.time()
-    save_interval = 1800
+    save_interval = 900
     batch_interval = 60
     save_count = 0
     for epoch in range(epoch_number):

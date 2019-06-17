@@ -141,7 +141,7 @@ def visit_data_expand(filename, outputname):
     with open(filename, 'rb') as f:
         visit = pickle.load(f)
     res = []
-    quick = np.array([-1] * 10000000, dtype = 'int16')
+    quick = np.array([-1] * 10000000, dtype = 'int32')
     starttime = time.mktime(time.strptime('2018100100', '%Y%m%d%H'))
     for num, one in enumerate(visit):
         resone = []
@@ -297,6 +297,7 @@ if __name__ == '__main__':
         res = 'data/pickle/part/visitlines/%d_%d.pkl' % (i, i + 10000)
         remove_short_expand(visit, label, res)
     '''
+    '''
     totalv = []
     totall = []
     for i in range(0, 40000, 10000):
@@ -308,3 +309,4 @@ if __name__ == '__main__':
                 totall.append(label[num])
     totall = np.array(totall, dtype='int8')
     pickle.dump([totalv, totall], open('data/pickle/part/visitline_23.pkl', 'wb'))
+    '''

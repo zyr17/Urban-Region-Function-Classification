@@ -3,6 +3,7 @@ import torch
 import torchvision
 import numpy as np
 import time
+import pdb
 
 torch.manual_seed(19951017)
 label_num = 9
@@ -18,6 +19,10 @@ for num in range(len(train_label_raw)):
     train_label[num][train_label_raw[num] - 1] = 1
 with open('data/pickle/train_image.pkl', 'rb') as f:
     train_image = pickle.load(f)
+with open('data/pickle/train_visitline_res.pkl', 'rb') as f:
+    train_visitline = pickle.load(f)
+
+print('load train data done')
 
 with open('data/pickle/test_visit.bucket.pkl', 'rb') as f:
     test_visit = pickle.load(f)
@@ -25,6 +30,10 @@ with open('data/pickle/test_visit.length.pkl', 'rb') as f:
     test_length = pickle.load(f)
 with open('data/pickle/test_image.pkl', 'rb') as f:
     test_image = pickle.load(f)
+with open('data/pickle/test_visitline_res.pkl', 'rb') as f:
+    test_visitline = pickle.load(f)
+
+print('load test data done')
 
 def change_visit_shape(visit):
     visit = np.array(visit, dtype='int32')
@@ -42,20 +51,24 @@ train_visit = train_visit[:200]
 train_label = train_label[:200]
 train_image = train_image[:200]
 train_length = train_length[:200]
+train_visitline = train_visitline[:200]
 test_visit = test_visit[:100]
 test_image = test_image[:100]
 test_length = test_length[:100]
+test_visitline = test_visitline[:200]
 '''
-# use last 10% data as validation set
+# use last 10% data as validation set TODO: random_split
 val_line = len(train_visit) // 10 * 9
 val_visit = train_visit[val_line:]
 val_label = train_label[val_line:]
 val_image = train_image[val_line:]
 val_length = train_length[val_line:]
+val_visitline = train_visitline[val_line:]
 train_visit = train_visit[:val_line]
 train_label = train_label[:val_line]
 train_image = train_image[:val_line]
 train_length = train_length[:val_line]
+train_visitline = train_visitline[:val_line]
 
 def cuda(tensor):
     """
@@ -112,9 +125,10 @@ length_input = (26 * 7 * 24,)
 length_CNN = ()
 length_FC = (26 * 7 * 24, 1000, 200)
 
-line_input = (500 * (1 + label_num),) # at most 500 line results. length + label. randomly select, TODO: can repeat?
-line_CNN = ()
-line_FC = (500 * (1 + label_num), 1000, 200)
+visitline_max = 500
+visitline_input = (visitline_max * (1 + label_num),) # at most 500 line results. length + label. randomly select, TODO: can repeat?
+visitline_CNN = ()
+visitline_FC = (visitline_max * (1 + label_num), 1000, 200)
 
 class CNNpart(torch.nn.Module):
     def __init__(self, inputlen, CNN, FC):
@@ -168,17 +182,18 @@ class concat_after(torch.nn.Module):
         self.imageCNN = CNNpart(image_input, image_CNN, image_FC)
         self.visitCNN = CNNpart(visit_input, visit_CNN, visit_FC)
         self.lengthCNN = CNNpart(length_input, length_CNN, length_FC)
+        self.visitlineCNN = CNNpart(visitline_input, visitline_CNN, visitline_FC)
 
         self.final_fcs = torch.nn.ModuleList()
         self.final_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(image_FC[-1] + visit_FC[-1] + length_FC[-1], 80),
+            torch.nn.Linear(image_FC[-1] + visit_FC[-1] + length_FC[-1] + visitline_FC[-1], 120),
             torch.nn.ReLU()
-        ))# [B, 80]
+        ))# [B, 120]
         self.final_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(80, outputlen),
+            torch.nn.Linear(120, outputlen),
             torch.nn.Sigmoid()
         ))# [B, 9]
-    def forward(self, inputs, images, length):
+    def forward(self, inputs, images, length, visitline):
         x = inputs # [B, 7, 26, 24]
         x = self.visitCNN(x)
         
@@ -187,21 +202,52 @@ class concat_after(torch.nn.Module):
 
         z = length
         z = self.lengthCNN(z)
+
+        vl = visitline
+        vl = self.visitlineCNN(vl)
         
-        zz = torch.cat([x, y, z], 1)
+        zz = torch.cat([x, y, z, vl], 1)
         for fc in self.final_fcs:
             zz = fc(zz)
         
         return zz
 
+class VisitLineDataset(torch.utils.data.Dataset):
+    def __init__(self, x):
+        if (len(x)) == 0:
+            #add all zero element
+            x = np.zeros((1, 1 + label_num), dtype='float')
+        self.x = torch.tensor(x).float()
+    def __getitem__(self, index):
+        return self.x[index]
+    def __len__(self):
+        return len(self.x)
+
 class VisitDataset(torch.utils.data.Dataset):
-    def __init__(self, x1, x2, x3, y):
-        self.x1 = torch.tensor(x1).float()
-        self.x2 = torch.tensor(x2).float()
-        self.x3 = torch.tensor(x3).float()
+    def __init__(self, x1, x2, x3, x4, y):
+        self.x1 = torch.tensor(x1).float()#bucket
+        self.x2 = torch.tensor(x2).float()#image
+        self.x3 = torch.tensor(x3).float()#length
+        self.x4loader = []#visitline
+        self.x4iter = []
+        for i in x4:
+            visitline_dataset = VisitLineDataset(i)
+            visitline_loader = torch.utils.data.DataLoader(visitline_dataset, visitline_max, True)
+            self.x4loader.append(visitline_loader)
+            self.x4iter.append(iter(self.x4loader[-1]))
         self.y = torch.tensor(y).float()
     def __getitem__(self, index):
-        return self.x1[index], self.x2[index], self.x3[index], self.y[index]
+        try:
+            x4data = next(self.x4iter[index])
+        except StopIteration:
+            self.x4iter[index] = iter(self.x4loader[index])
+            x4data = next(self.x4iter[index])
+        x4 = np.zeros((visitline_max, 1 + label_num), dtype='float')
+        #print(len(x4data))
+        x4[:x4data.shape[0]] = x4data
+        x4.reshape(visitline_max * (1 + label_num))
+        x4 = torch.tensor(x4).float()
+        return self.x1[index], self.x2[index], self.x3[index], x4, self.y[index]
     def __len__(self):
         return len(self.x1)
 
@@ -216,7 +262,7 @@ def Accuracy(x, y):
             yi = i
     return xi == yi
 
-batch_size = 10
+batch_size = 100
 epoch_number = 100
 learning_rate = 0.00001
 #modelname = 'CNN'
@@ -226,11 +272,11 @@ if (modelname != 'FC'):
     train_visit = train_visit.reshape(-1, 7, 26, 24)
     val_visit = val_visit.reshape(-1, 7, 26, 24)
     test_visit = test_visit.reshape(-1, 7, 26, 24)
-train_dataset = VisitDataset(train_visit, train_image, train_length, train_label)
+train_dataset = VisitDataset(train_visit, train_image, train_length, train_visitline, train_label)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True)
-test_dataset = VisitDataset(test_visit, test_image, test_length, np.zeros(len(test_visit)))
+test_dataset = VisitDataset(test_visit, test_image, test_length, test_visitline, np.zeros(len(test_visit)))
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size, False)
-val_dataset = VisitDataset(val_visit, val_image, val_length, val_label)
+val_dataset = VisitDataset(val_visit, val_image, val_length, val_visitline, val_label)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size, True)
 if (modelname == 'CNN'):
     model = CNN()
@@ -248,13 +294,14 @@ for epoch in range(epoch_number):
     opt = torch.optim.Adam(model.parameters(), learning_rate)
     model.train()
     batch_count = 0
-    for input, image, length, label in train_loader:
+    for input, image, length, visitline, label in train_loader:
         input = cuda(input)
         image = cuda(image)
         length = cuda(length)
+        visitline = cuda(visitline)
         label = cuda(label)
         opt.zero_grad()
-        pred = model(input, image, length)
+        pred = model(input, image, length, visitline)
         L = loss(pred, label)
         if (batch_count % (len(train_label) // 10 // batch_size) == 0):
             print(batch_count, L.data.item())
@@ -263,12 +310,13 @@ for epoch in range(epoch_number):
         batch_count += 1
     model.eval()
     correct = 0
-    for input, image, length, label in val_loader:
+    for input, image, length, visitline, label in val_loader:
         input = cuda(input)
         image = cuda(image)
         length = cuda(length)
+        visitline = cuda(visitline)
         label = cuda(label)
-        pred = model(input, image, length)
+        pred = model(input, image, length, visitline)
         for i in range(len(input)):
             if Accuracy(pred[i], label[i]):
                 correct += 1
@@ -277,8 +325,8 @@ for epoch in range(epoch_number):
 
     result = []
     num = 0
-    for input, image, length, xxx in test_loader:
-        preds = model(cuda(torch.tensor(input).float()), cuda(torch.tensor(image).float()), cuda(torch.tensor(length).float()))
+    for input, image, length, visitline, xxx in test_loader:
+        preds = model(cuda(torch.tensor(input).float()), cuda(torch.tensor(image).float()), cuda(torch.tensor(length).float()), cuda(torch.tensor(visitline).float()))
         #print(num, input)
         oneres = 0
         #print(num, pred)

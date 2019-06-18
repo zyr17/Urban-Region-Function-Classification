@@ -97,7 +97,7 @@ def Accuracy(x, y):
 
 if __name__ == '__main__':
     #filename = 'data/pickle/part/visitline_23/test.pkl'
-    filename = 'data/pickle/visitline_23_shuffle.pkl'
+    filename = 'data/pickle/train_visitline_23_shuffle.pkl'
     #TODO: 将训练集中的line分成两半（每个图片平均分配），一半用来训练另一半用来生成main训练所用的label，避免line数据是训练集置信度太高
 
     train_line, raw_label = pickle.load(open(filename, 'rb'))
@@ -134,8 +134,8 @@ if __name__ == '__main__':
     batch_interval = 60
     save_count = 0
 
-    save_count = 42
-    model.load_state_dict(torch.load('data/models/visitline/%04d_8_74089_0.4788.pkl' % (save_count,)))
+    #save_count = 42
+    #model.load_state_dict(torch.load('data/models/visitline/%04d_8_74089_0.4788.pkl' % (save_count,)))
 
     for epoch in range(epoch_number):
         print('epoch', epoch)

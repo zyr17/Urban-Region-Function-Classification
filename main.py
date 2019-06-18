@@ -33,6 +33,13 @@ with open('data/pickle/test_image.pkl', 'rb') as f:
 with open('data/pickle/test_visitline_res.pkl', 'rb') as f:
     test_visitline = pickle.load(f)
 
+for num in range(len(train_visitline)):
+    if len(train_visitline[num]) > 0:
+        train_visitline[num][:][0] = 0
+for num in range(len(test_visitline)):
+    if len(test_visitline[num]) > 0:
+        test_visitline[num][:][0] = 0
+
 print('load test data done')
 
 def change_visit_shape(visit):

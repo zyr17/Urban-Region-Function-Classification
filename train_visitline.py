@@ -98,6 +98,7 @@ def Accuracy(x, y):
 if __name__ == '__main__':
     #filename = 'data/pickle/part/visitline_23/test.pkl'
     filename = 'data/pickle/visitline_23_shuffle.pkl'
+    #TODO: 将训练集中的line分成两半（每个图片平均分配），一半用来训练另一半用来生成main训练所用的label，避免line数据是训练集置信度太高
 
     train_line, raw_label = pickle.load(open(filename, 'rb'))
     train_label = np.zeros((len(raw_label), label_num))

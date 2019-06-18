@@ -9,6 +9,8 @@ label_num = 9
 
 with open('data/pickle/train_visit.bucket.pkl', 'rb') as f:
     train_visit = pickle.load(f)
+with open('data/pickle/train_visit.length.pkl', 'rb') as f:
+    train_length = pickle.load(f)
 with open('data/pickle/train_label.pkl', 'rb') as f:
     train_label_raw = pickle.load(f)
 train_label = np.zeros((len(train_label_raw), label_num), dtype='float')
@@ -19,6 +21,8 @@ with open('data/pickle/train_image.pkl', 'rb') as f:
 
 with open('data/pickle/test_visit.bucket.pkl', 'rb') as f:
     test_visit = pickle.load(f)
+with open('data/pickle/test_visit.length.pkl', 'rb') as f:
+    test_length = pickle.load(f)
 with open('data/pickle/test_image.pkl', 'rb') as f:
     test_image = pickle.load(f)
 
@@ -37,17 +41,21 @@ test_image = test_image.transpose(0, 3, 1, 2)
 train_visit = train_visit[:200]
 train_label = train_label[:200]
 train_image = train_image[:200]
+train_length = train_length[:200]
 test_visit = test_visit[:100]
 test_image = test_image[:100]
+test_length = test_length[:100]
 '''
 # use last 10% data as validation set
 val_line = len(train_visit) // 10 * 9
 val_visit = train_visit[val_line:]
 val_label = train_label[val_line:]
 val_image = train_image[val_line:]
+val_length = train_length[val_line:]
 train_visit = train_visit[:val_line]
 train_label = train_label[:val_line]
 train_image = train_image[:val_line]
+train_length = train_length[:val_line]
 
 def cuda(tensor):
     """
@@ -90,6 +98,7 @@ image_CNN = (
     (800, 3, 1, 3, (0, 0)),
 )
 image_FC = (800 * 3 * 3, 240)
+
 visit_input = (7, 26, 24)
 visit_CNN = (
     (100, 5, 2, 2, (0, 0)),
@@ -98,6 +107,14 @@ visit_CNN = (
     (800, 5, 2, 2, (0, 1)),
 )
 visit_FC = (800 * 2 * 2, 160)
+
+length_input = (26 * 7 * 24,)
+length_CNN = ()
+length_FC = (26 * 7 * 24, 1000, 200)
+
+line_input = (500 * (1 + label_num),) # at most 500 line results. length + label. randomly select, TODO: can repeat?
+line_CNN = ()
+line_FC = (500 * (1 + label_num), 1000, 200)
 
 class CNNpart(torch.nn.Module):
     def __init__(self, inputlen, CNN, FC):
@@ -150,36 +167,41 @@ class concat_after(torch.nn.Module):
         super(concat_after, self).__init__()
         self.imageCNN = CNNpart(image_input, image_CNN, image_FC)
         self.visitCNN = CNNpart(visit_input, visit_CNN, visit_FC)
+        self.lengthCNN = CNNpart(length_input, length_CNN, length_FC)
 
         self.final_fcs = torch.nn.ModuleList()
         self.final_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(image_FC[-1] + visit_FC[-1], 80),
+            torch.nn.Linear(image_FC[-1] + visit_FC[-1] + length_FC[-1], 80),
             torch.nn.ReLU()
         ))# [B, 80]
         self.final_fcs.append(torch.nn.Sequential(
             torch.nn.Linear(80, outputlen),
             torch.nn.Sigmoid()
         ))# [B, 9]
-    def forward(self, inputs, images):
+    def forward(self, inputs, images, length):
         x = inputs # [B, 7, 26, 24]
         x = self.visitCNN(x)
         
         y = images
         y = self.imageCNN(y)
+
+        z = length
+        z = self.lengthCNN(z)
         
-        z = torch.cat([x, y], 1)
+        zz = torch.cat([x, y, z], 1)
         for fc in self.final_fcs:
-            z = fc(z)
+            zz = fc(zz)
         
-        return z
+        return zz
 
 class VisitDataset(torch.utils.data.Dataset):
-    def __init__(self, x1, x2, y):
+    def __init__(self, x1, x2, x3, y):
         self.x1 = torch.tensor(x1).float()
         self.x2 = torch.tensor(x2).float()
+        self.x3 = torch.tensor(x3).float()
         self.y = torch.tensor(y).float()
     def __getitem__(self, index):
-        return self.x1[index], self.x2[index], self.y[index]
+        return self.x1[index], self.x2[index], self.x3[index], self.y[index]
     def __len__(self):
         return len(self.x1)
 
@@ -204,11 +226,11 @@ if (modelname != 'FC'):
     train_visit = train_visit.reshape(-1, 7, 26, 24)
     val_visit = val_visit.reshape(-1, 7, 26, 24)
     test_visit = test_visit.reshape(-1, 7, 26, 24)
-train_dataset = VisitDataset(train_visit, train_image, train_label)
+train_dataset = VisitDataset(train_visit, train_image, train_length, train_label)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True)
-test_dataset = VisitDataset(test_visit, test_image, np.zeros(len(test_visit)))
+test_dataset = VisitDataset(test_visit, test_image, test_length, np.zeros(len(test_visit)))
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size, False)
-val_dataset = VisitDataset(val_visit, val_image, val_label)
+val_dataset = VisitDataset(val_visit, val_image, val_length, val_label)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size, True)
 if (modelname == 'CNN'):
     model = CNN()
@@ -226,12 +248,13 @@ for epoch in range(epoch_number):
     opt = torch.optim.Adam(model.parameters(), learning_rate)
     model.train()
     batch_count = 0
-    for input, image, label in train_loader:
+    for input, image, length, label in train_loader:
         input = cuda(input)
         image = cuda(image)
+        length = cuda(length)
         label = cuda(label)
         opt.zero_grad()
-        pred = model(input, image)
+        pred = model(input, image, length)
         L = loss(pred, label)
         if (batch_count % (len(train_label) // 10 // batch_size) == 0):
             print(batch_count, L.data.item())
@@ -240,11 +263,12 @@ for epoch in range(epoch_number):
         batch_count += 1
     model.eval()
     correct = 0
-    for input, image, label in val_loader:
+    for input, image, length, label in val_loader:
         input = cuda(input)
         image = cuda(image)
+        length = cuda(length)
         label = cuda(label)
-        pred = model(input, image)
+        pred = model(input, image, length)
         for i in range(len(input)):
             if Accuracy(pred[i], label[i]):
                 correct += 1
@@ -253,8 +277,8 @@ for epoch in range(epoch_number):
 
     result = []
     num = 0
-    for input, image, xxx in test_loader:
-        preds = model(cuda(torch.tensor(input).float()), cuda(torch.tensor(image).float()))
+    for input, image, length, xxx in test_loader:
+        preds = model(cuda(torch.tensor(input).float()), cuda(torch.tensor(image).float()), cuda(torch.tensor(length).float()))
         #print(num, input)
         oneres = 0
         #print(num, pred)

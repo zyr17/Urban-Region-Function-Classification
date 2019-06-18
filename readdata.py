@@ -169,19 +169,30 @@ def remove_short_expand(visitname, labelname, outputname, threshold = 23):
         labels = pickle.load(f)
     resvisit = []
     reslabel = []
+    othervisit = []
+    otherlabel = []
     for num in range(len(visits)):
         if num % 100 == 0:
             print(num, len(resvisit))
         visit = visits[num]
         label = labels[num]
+        flag = 0
         for line in visit:
             if len(line) > threshold:
-                resvisit.append(line)
-                reslabel.append(label)
+                if flag == 0:
+                    othervisit.append(line)
+                    otherlabel.append(num)
+                else:
+                    resvisit.append(line)
+                    reslabel.append(label)
+                flag = 1 - flag
     reslabel = np.array(reslabel, dtype='int8')
+    otherlabel = np.array(otherlabel, dtype='int32')
     print('save', outputname)
     with open(outputname, 'wb') as f:
         pickle.dump([resvisit, reslabel], f)
+    with open(outputname + '.1', 'wb') as f:
+        pickle.dump([othervisit, otherlabel], f)
 
 if __name__ == '__main__':
     ''' 
@@ -305,18 +316,18 @@ if __name__ == '__main__':
     totalv = []
     totall = []
     for i in range(0, 40000, 10000):
-        with open('data/pickle/part/visitline_23/%d_%d.pkl' % (i, i + 10000), 'rb') as f:
+        with open('data/pickle/part/visitline_23/%d_%d.pkl.1' % (i, i + 10000), 'rb') as f:
             [visit, label] = pickle.load(f)
             print(i)
             for num in range(len(visit)):
                 totalv.append(visit[num])
                 totall.append(label[num])
-    totall = np.array(totall, dtype='int8')
-    pickle.dump([totalv, totall], open('data/pickle/visitline_23.pkl', 'wb'))
+    totall = np.array(totall, dtype='int32')
+    pickle.dump([totalv, totall], open('data/pickle/train_visitline_23.pkl.1', 'wb'))
     '''
-    '''
+    
     #shuffle visitline
-    [train_x, train_y] = pickle.load(open('data/pickle/test_visitline_23.pkl', 'rb'))
+    [train_x, train_y] = pickle.load(open('data/pickle/train_visitline_23.pkl', 'rb'))
     print('read done')
     zipped = list(zip(train_x, train_y))
     print(len(zipped), zipped[0])
@@ -327,8 +338,8 @@ if __name__ == '__main__':
     train_y = np.array(train_y, dtype='int8')
     print(len(train_x), len(train_y))
     print(train_x[0], train_y[0])
-    pickle.dump([train_x, train_y], open('data/pickle/test_visitline_23_shuffle.pkl', 'wb'))
-    '''
+    pickle.dump([train_x, train_y], open('data/pickle/train_visitline_23_shuffle.pkl', 'wb'))
+    
     '''
     #visit length
     lengths = []

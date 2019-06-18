@@ -66,23 +66,23 @@ class CNN(torch.nn.Module):
 class LineDataset(torch.utils.data.Dataset):
     def __init__(self, x, y):
         self.x = x
-        self.y = np.array(y, dtype='float')
+        self.y = np.array(y, dtype='int32')
     def __getitem__(self, index):
         xarr = np.zeros(26 * 7 * 24)
         for i in self.x[index]:
             xarr[i] = 1
         xarr = xarr.reshape(26, 7, 24)
         xarr = xarr.transpose(1, 0, 2)
-        return xarr, self.y[index]
+        return xarr, self.y[index], len(self.x[index])
     def __len__(self):
         return len(self.x)
 
     def collate_fn(self, data):
-        x, y = list(zip(*data))
+        x, y, z = list(zip(*data))
         #print(len(x), len(y), x[0], y[0], type(x[0]), type(y[0]))
         x = cuda(torch.tensor(x).float())
-        y = cuda(torch.tensor(y).float())
-        return x, y
+        #y = torch.tensor(y)
+        return x, y, z
 
 def Accuracy(x, y):
     xi = 0
@@ -97,16 +97,17 @@ def Accuracy(x, y):
 
 if __name__ == '__main__':
     #filename = 'data/pickle/part/visitline_23/test.pkl'
-    filename = 'data/pickle/visitline_23_shuffle.pkl.1'
+    filename = 'data/pickle/train_visitline_23.pkl.1'
+    filename = 'data/pickle/test_visitline_23.pkl.1'
 
     train_line, train_id = pickle.load(open(filename, 'rb'))
     print('pickle load over')
 
-    #train_line = train_line[:1000]
-    #train_label = train_label[:1000]
+    #train_line = train_line[9000:10000]
+    #train_id = train_id[9000:10000]
     #pickle.dump([train_line, raw_label[:1000]], open('data/pickle/part/visitline_23/test.pkl', 'wb'))
 
-    batch_size = 100
+    batch_size = 1000
 
     train_dataset = LineDataset(train_line, train_id)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True, collate_fn=train_dataset.collate_fn)
@@ -119,16 +120,23 @@ if __name__ == '__main__':
 
     res = [[] for x in range(40000)]
 
-    for input, label in train_loader:
+    count = 0
+
+    for input, label, lengths in train_loader:
+        count += 1
+        if count % 100 == 0:
+            print(count)
         model.eval()
         pred = model(input)
-        for num in enumerate(len(pred)):
+        for num in range(len(pred)):
             l = label[num]
-            length = len(input[num])
+            length = lengths[num]
             p = pred[num]
-            res[l].append([length] + list(p))
+            #print(l, length, p)
+            res[l].append([length] + p.tolist())
 
     for num in range(len(res)):
-        res[num] = np.array(res[num], dtype='int32')
+        res[num] = np.array(res[num], dtype='float')
 
-    pickle.dump(res, open('data/pickle/train_visitline_res.pkl', 'wb'))
+    #pickle.dump(res, open('data/pickle/train_visitline_res.pkl', 'wb'))
+    pickle.dump(res, open('data/pickle/test_visitline_res.pkl', 'wb'))

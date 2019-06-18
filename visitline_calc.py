@@ -118,13 +118,13 @@ if __name__ == '__main__':
     save_count = 42
     model.load_state_dict(torch.load('data/models/visitline.model'))
 
-    res = [[] for x in range(40000)]
+    res = [[] for x in range(10000)]
 
     count = 0
 
     for input, label, lengths in train_loader:
         count += 1
-        if count % 100 == 0:
+        if count % 10 == 0:
             print(count)
         model.eval()
         pred = model(input)

@@ -27,38 +27,38 @@ class CNN(torch.nn.Module):
         self.visit_convs = torch.nn.ModuleList()
         self.visit_fcs = torch.nn.ModuleList()
         self.visit_convs.append(torch.nn.Sequential(
-            torch.nn.Conv2d(inputlen[0], 100, 5, padding=2),
+            torch.nn.Conv2d(inputlen[0], 200, 5, padding=2),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(2)
         ))# [B, 100, 13, 12]
         self.visit_convs.append(torch.nn.Sequential(
-            torch.nn.Conv2d(100, 200, 5, padding=2),
+            torch.nn.Conv2d(200, 500, 5, padding=2),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, padding=(1, 0))
         ))# [B, 200, 7, 6]
         self.visit_convs.append(torch.nn.Sequential(
-            torch.nn.Conv2d(200, 400, 5, padding=2),
+            torch.nn.Conv2d(500, 1000, 5, padding=2),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, padding=(1, 0))
         ))# [B, 400, 4, 3]
         self.visit_convs.append(torch.nn.Sequential(
-            torch.nn.Conv2d(400, 800, 5, padding=2),
+            torch.nn.Conv2d(1000, 2000, 5, padding=2),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, padding=(0, 1))
         ))# [B, 800, 2, 2]
         self.visit_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(800 * 2 * 2, 160),
+            torch.nn.Linear(2000 * 2 * 2, 300),
             torch.nn.ReLU()
         ))# [B, 160]
         self.visit_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(160, outputlen),
+            torch.nn.Linear(300, outputlen),
             torch.nn.Sigmoid()
         ))# [B, 9]
     def forward(self, inputs):
         x = inputs # [B, 7, 26, 24]
         for conv in self.visit_convs:
             x = conv(x)
-        x = x.reshape(-1, 800 * 2 * 2)
+        x = x.reshape(-1, 2000 * 2 * 2)
         for fc in self.visit_fcs:
             x = fc(x)
         return x
@@ -132,10 +132,6 @@ if __name__ == '__main__':
     save_interval = 900
     batch_interval = 60
     save_count = 0
-
-    save_count = 42
-    model.load_state_dict(torch.load('data/models/visitline/%04d_8_74089_0.4788.pkl' % (save_count,)))
-
     for epoch in range(epoch_number):
         print('epoch', epoch)
         opt = torch.optim.Adam(model.parameters(), learning_rate)
@@ -164,5 +160,5 @@ if __name__ == '__main__':
                             correct += 1
                 correct /= len(val_line)
                 print(time.time() - last_save_time, correct)
-                torch.save(model.state_dict(), 'data/models/visitline/%04d_%d_%d_%.4f.pkl' % (save_count, epoch, batch_count, correct))
+                torch.save(model.state_dict(), 'data/models/visitline_big/%04d_%d_%d_%.4f.pkl' % (save_count, epoch, batch_count, correct))
                 last_save_time = time.time()

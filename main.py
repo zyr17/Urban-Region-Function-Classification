@@ -33,13 +33,6 @@ with open('data/pickle/test_image.pkl', 'rb') as f:
 with open('data/pickle/test_visitline_res.pkl', 'rb') as f:
     test_visitline = pickle.load(f)
 
-for num in range(len(train_visitline)):
-    if len(train_visitline[num]) > 0:
-        train_visitline[num][:][0] = 0
-for num in range(len(test_visitline)):
-    if len(test_visitline[num]) > 0:
-        test_visitline[num][:][0] = 0
-
 print('load test data done')
 
 def change_visit_shape(visit):
@@ -156,6 +149,7 @@ class CNNpart(torch.nn.Module):
         for i in FC[1:]:
             self.visit_fcs.append(torch.nn.Sequential(
                 torch.nn.Linear(lastfea, i),
+                torch.nn.Dropout(0.5),
                 torch.nn.ReLU()
             ))
             lastfea = i
@@ -191,6 +185,9 @@ class concat_after(torch.nn.Module):
         self.lengthCNN = CNNpart(length_input, length_CNN, length_FC)
         self.visitlineCNN = CNNpart(visitline_input, visitline_CNN, visitline_FC)
 
+        self.imageNorm = torch.nn.BatchNorm2d(3)
+        self.visitNorm = torch.nn.BatchNorm2d(7)
+
         self.final_fcs = torch.nn.ModuleList()
         self.final_fcs.append(torch.nn.Sequential(
             torch.nn.Linear(image_FC[-1] + visit_FC[-1] + length_FC[-1] + visitline_FC[-1], 120),
@@ -201,10 +198,10 @@ class concat_after(torch.nn.Module):
             torch.nn.Sigmoid()
         ))# [B, 9]
     def forward(self, inputs, images, length, visitline):
-        x = inputs # [B, 7, 26, 24]
+        x = self.visitNorm(inputs) # [B, 7, 26, 24]
         x = self.visitCNN(x)
         
-        y = images
+        y = self.imageNorm(images)
         y = self.imageCNN(y)
 
         z = length

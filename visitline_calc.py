@@ -97,72 +97,38 @@ def Accuracy(x, y):
 
 if __name__ == '__main__':
     #filename = 'data/pickle/part/visitline_23/test.pkl'
-    filename = 'data/pickle/visitline_23_shuffle.pkl'
+    filename = 'data/pickle/visitline_23_shuffle.pkl.1'
 
-    train_line, raw_label = pickle.load(open(filename, 'rb'))
-    train_label = np.zeros((len(raw_label), label_num))
-    for num, i in enumerate(raw_label):
-        train_label[num][i - 1] = 1
+    train_line, train_id = pickle.load(open(filename, 'rb'))
     print('pickle load over')
 
     #train_line = train_line[:1000]
     #train_label = train_label[:1000]
     #pickle.dump([train_line, raw_label[:1000]], open('data/pickle/part/visitline_23/test.pkl', 'wb'))
 
-    val_num = len(train_line) // 200 * 199
-    val_line = train_line[val_num:]
-    val_label = train_label[val_num:]
-    train_line = train_line[:val_num]
-    train_label = train_label[:val_num]
-
     batch_size = 100
-    epoch_number = 100
-    learning_rate = 0.0001
 
-    train_dataset = LineDataset(train_line, train_label)
-    val_dataset = LineDataset(val_line, val_label)
+    train_dataset = LineDataset(train_line, train_id)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True, collate_fn=train_dataset.collate_fn)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size, True, collate_fn=val_dataset.collate_fn)
     model = cuda(CNN())
-    loss = torch.nn.MSELoss()
 
-    print('start training')
-    last_save_time = time.time()
-    last_batch_time = time.time()
-    save_interval = 900
-    batch_interval = 60
-    save_count = 0
+    print('start eval')
 
     save_count = 42
-    model.load_state_dict(torch.load('data/models/visitline/%04d_8_74089_0.4788.pkl' % (save_count,)))
+    model.load_state_dict(torch.load('data/models/visitline.model'))
 
-    for epoch in range(epoch_number):
-        print('epoch', epoch)
-        opt = torch.optim.Adam(model.parameters(), learning_rate)
-        batch_count = 0
-        for input, label in train_loader:
-            model.train()
-            opt.zero_grad()
-            pred = model(input)
-            L = loss(pred, label)
-            if (time.time() - last_batch_time > batch_interval):
-                print(batch_count, L.data.item())
-                last_batch_time = time.time()
-            L.backward()
-            opt.step()
-            batch_count += 1
-            if time.time() - last_save_time > save_interval:
-                # after some time, eval and save model
-                save_count += 1
-                print('start eval #%04d' % (save_count))
-                model.eval()
-                correct = 0
-                for input, label in val_loader:
-                    pred = model(input)
-                    for i in range(len(input)):
-                        if Accuracy(pred[i], label[i]):
-                            correct += 1
-                correct /= len(val_line)
-                print(time.time() - last_save_time, correct)
-                torch.save(model.state_dict(), 'data/models/visitline/%04d_%d_%d_%.4f.pkl' % (save_count, epoch, batch_count, correct))
-                last_save_time = time.time()
+    res = [[] for x in range(40000)]
+
+    for input, label in train_loader:
+        model.eval()
+        pred = model(input)
+        for num in enumerate(len(pred)):
+            l = label[num]
+            length = len(input[num])
+            p = pred[num]
+            res[l].append([length] + list(p))
+
+    for num in range(len(res)):
+        res[num] = np.array(res[num], dtype='int32')
+
+    pickle.dump(res, open('data/pickle/train_visitline_res.pkl', 'wb'))

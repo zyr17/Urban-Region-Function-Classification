@@ -325,7 +325,7 @@ if __name__ == '__main__':
     totall = np.array(totall, dtype='int32')
     pickle.dump([totalv, totall], open('data/pickle/train_visitline_23.pkl.1', 'wb'))
     '''
-    
+    '''
     #shuffle visitline
     [train_x, train_y] = pickle.load(open('data/pickle/train_visitline_23.pkl', 'rb'))
     print('read done')
@@ -339,7 +339,7 @@ if __name__ == '__main__':
     print(len(train_x), len(train_y))
     print(train_x[0], train_y[0])
     pickle.dump([train_x, train_y], open('data/pickle/train_visitline_23_shuffle.pkl', 'wb'))
-    
+    '''
     '''
     #visit length
     lengths = []

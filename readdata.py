@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 import time
 import sys
+import random
 
 DF = 'data/'
 train_image_folder = DF + 'train_image/'
@@ -259,6 +260,8 @@ if __name__ == '__main__':
     visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
     visit_data_expand('E:/BaiduNetdiskDownload/初赛赛题/pickle/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
     '''
+    #visit_data_expand('E:/BaiduNetdiskDownload/初赛赛题/pickle/test_visit_with_id.pkl', 'data/pickle/test_visit.pkl')
+    #remove_short_expand('data/pickle/test_visit.pkl', 'data/pickle/test_label.pkl', 'test_visitline_23.pkl')
     filenames = [
         'data/pickle/part/train_visit_0_10000.pkl',
         'data/pickle/part/train_visit_10000_20000.pkl',
@@ -313,7 +316,7 @@ if __name__ == '__main__':
     '''
     '''
     #shuffle visitline
-    [train_x, train_y] = pickle.load(open('data/pickle/visitline_23.pkl', 'rb'))
+    [train_x, train_y] = pickle.load(open('data/pickle/test_visitline_23.pkl', 'rb'))
     print('read done')
     zipped = list(zip(train_x, train_y))
     print(len(zipped), zipped[0])
@@ -324,5 +327,19 @@ if __name__ == '__main__':
     train_y = np.array(train_y, dtype='int8')
     print(len(train_x), len(train_y))
     print(train_x[0], train_y[0])
-    pickle.dump([train_x, train_y], open('data/pickle/visitline_23_shuffle.pkl', 'wb'))
+    pickle.dump([train_x, train_y], open('data/pickle/test_visitline_23_shuffle.pkl', 'wb'))
+    '''
+    '''
+    #visit length
+    lengths = []
+    for i in range(0, 40000, 10000):
+        data = pickle.load(open('data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000), 'rb'))
+        print('pickle done')
+        for one in data:
+            lengths.append(list(map(len, one)))
+        print('map done')
+    res = np.zeros((40000, 26 * 7 * 24), dtype='int32')
+    for num, i in enumerate(lengths):
+        for j in i:
+            res[num][j] += 1
     '''

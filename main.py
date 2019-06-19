@@ -35,6 +35,13 @@ with open('data/pickle/test_visitline_res.pkl', 'rb') as f:
 
 print('load test data done')
 
+for i in train_visitline:
+    if (len(i)) > 0:
+        i[:,0] = 0
+for i in test_visitline:
+    if (len(i)) > 0:
+        i[:,0] = 0
+
 def change_visit_shape(visit):
     visit = np.array(visit, dtype='int32')
     visit = visit.reshape(-1, 26, 7, 24)
@@ -149,7 +156,7 @@ class CNNpart(torch.nn.Module):
         for i in FC[1:]:
             self.visit_fcs.append(torch.nn.Sequential(
                 torch.nn.Linear(lastfea, i),
-                torch.nn.Dropout(0.5),
+                #torch.nn.Dropout(0.5),
                 torch.nn.ReLU()
             ))
             lastfea = i

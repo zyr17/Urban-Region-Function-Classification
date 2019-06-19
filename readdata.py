@@ -162,7 +162,7 @@ def visit_data_expand(filename, outputname):
         print(num)
     pickle.dump(res, open(outputname, 'wb'))
 
-def remove_short_expand(visitname, labelname, outputname, threshold = 23):
+def remove_short_expand(starti, visitname, labelname, outputname, threshold = 23):
     with open(visitname, 'rb') as f:
         visits = pickle.load(f)
     with open(labelname, 'rb') as f:
@@ -181,7 +181,7 @@ def remove_short_expand(visitname, labelname, outputname, threshold = 23):
             if len(line) > threshold:
                 if flag == 0:
                     othervisit.append(line)
-                    otherlabel.append(num)
+                    otherlabel.append(starti + num)
                 else:
                     resvisit.append(line)
                     reslabel.append(label)
@@ -309,7 +309,7 @@ if __name__ == '__main__':
         visit = 'data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000)
         label = 'data/pickle/part/train_label_%d_%d.pkl' % (i, i + 10000)
         res = 'data/pickle/part/visitline_23/%d_%d.pkl' % (i, i + 10000)
-        remove_short_expand(visit, label, res)
+        remove_short_expand(i, visit, label, res)
     '''
     '''
     #combine vilitline

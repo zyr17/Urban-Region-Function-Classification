@@ -4,6 +4,7 @@ import torchvision
 import numpy as np
 import time
 import pdb
+import dpn
 
 torch.manual_seed(19951017)
 label_num = 9
@@ -192,7 +193,8 @@ class concat_after(torch.nn.Module):
     def __init__(self, outputlen = label_num):
         super(concat_after, self).__init__()
         self.imageCNN = CNNpart(image_input, image_CNN, image_FC)
-        self.visitCNN = CNNpart(visit_input, visit_CNN, visit_FC)
+        #self.visitCNN = CNNpart(visit_input, visit_CNN, visit_FC)
+        self.visitCNN = dpn.DPN26()
         self.lengthCNN = CNNpart(length_input, length_CNN, length_FC)
         self.visitlineCNN = CNNpart(visitline_input, visitline_CNN, visitline_FC)
 
@@ -201,7 +203,7 @@ class concat_after(torch.nn.Module):
 
         self.final_fcs = torch.nn.ModuleList()
         self.final_fcs.append(torch.nn.Sequential(
-            torch.nn.Linear(image_FC[-1] + visit_FC[-1] + length_FC[-1] + visitline_FC[-1], 120),
+            torch.nn.Linear(image_FC[-1] + 256 + length_FC[-1] + visitline_FC[-1], 120),
             torch.nn.ReLU()
         ))# [B, 120]
         self.final_fcs.append(torch.nn.Sequential(
@@ -211,6 +213,7 @@ class concat_after(torch.nn.Module):
     def forward(self, inputs, images, length, visitline):
         x = self.visitNorm(inputs) # [B, 7, 26, 24]
         x = self.visitCNN(x)
+        #print(x.size())
         
         y = self.imageNorm(images)
         y = self.imageCNN(y)
@@ -281,7 +284,7 @@ def Accuracy(x, y):
 
 batch_size = 100
 epoch_number = 100
-learning_rate = 0.00001
+learning_rate = 0.0001
 #modelname = 'CNN'
 modelname = 'concat_after'
 

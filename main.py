@@ -283,14 +283,11 @@ def Accuracy(x, y):
     return xi == yi
 
 batch_size = 100
-<<<<<<< HEAD
-epoch_number = 100
-=======
 epoch_number = 1000
->>>>>>> d1a7ace0ed987133e3e9327e552d7c605fbb4811
 learning_rate = 0.0001
 #modelname = 'CNN'
 modelname = 'concat_after'
+modelfile = 'data/models/dpn/'
 
 if (modelname != 'FC'):
     train_visit = train_visit.reshape(-1, 7, 26, 24)
@@ -313,7 +310,7 @@ loss = torch.nn.CrossEntropyLoss()
 
 start_epoch = 80
 if start_epoch != -1:
-    model.load_state_dict(torch.load('data/models/main/%04d.pkl' % (start_epoch,)))
+    model.load_state_dict(torch.load(modelfile + '%04d.pkl' % (start_epoch,)))
 
 print('start training')
 for epoch in range(start_epoch + 1, epoch_number):
@@ -349,7 +346,7 @@ for epoch in range(start_epoch + 1, epoch_number):
     correct /= len(val_visit)
     print(correct, 'use time:', time.clock() - start_time)
 
-    torch.save(model.state_dict(), 'data/models/main/%04d.pkl' % (epoch,))
+    torch.save(model.state_dict(), modelfile + '%04d.pkl' % (epoch,))
 
     result = []
     num = 0

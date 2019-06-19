@@ -14,9 +14,13 @@ with open('data/pickle/train_visit.length.pkl', 'rb') as f:
     train_length = pickle.load(f)
 with open('data/pickle/train_label.pkl', 'rb') as f:
     train_label_raw = pickle.load(f)
+'''
 train_label = np.zeros((len(train_label_raw), label_num), dtype='float')
 for num in range(len(train_label_raw)):
     train_label[num][train_label_raw[num] - 1] = 1
+'''
+train_label = train_label_raw
+train_label -= 1
 with open('data/pickle/train_image.pkl', 'rb') as f:
     train_image = pickle.load(f)
 with open('data/pickle/train_visitline_res.pkl', 'rb') as f:
@@ -246,7 +250,7 @@ class VisitDataset(torch.utils.data.Dataset):
             visitline_loader = torch.utils.data.DataLoader(visitline_dataset, visitline_max, True)
             self.x4loader.append(visitline_loader)
             self.x4iter.append(iter(self.x4loader[-1]))
-        self.y = torch.tensor(y).float()
+        self.y = torch.tensor(y).long()
     def __getitem__(self, index):
         try:
             x4data = next(self.x4iter[index])
@@ -264,13 +268,15 @@ class VisitDataset(torch.utils.data.Dataset):
 
 def Accuracy(x, y):
     xi = 0
-    yi = 0
+    yi = y
     for i in range(len(x)):
         if x[xi] < x[i]:
             xi = i
+    '''
     for i in range(len(y)):
         if y[yi] < y[i]:
             yi = i
+    '''
     return xi == yi
 
 batch_size = 100
@@ -296,7 +302,7 @@ elif (modelname == 'FC'):
 elif modelname == 'concat_after':
     model = concat_after()
 model = cuda(model)
-loss = torch.nn.MSELoss()
+loss = torch.nn.CrossEntropyLoss()
 
 print('start training')
 for epoch in range(epoch_number):
@@ -326,13 +332,13 @@ for epoch in range(epoch_number):
         image = cuda(image)
         length = cuda(length)
         visitline = cuda(visitline)
-        label = cuda(label)
+        label = label
         pred = model(input, image, length, visitline)
-        for i in range(len(input)):
-            if Accuracy(pred[i], label[i]):
-                correct += 1
+        correct += np.sum((np.argmax(pred.cpu().detach().numpy(), axis = 1) == label).numpy())
     correct /= len(val_visit)
     print(correct, 'use time:', time.clock() - start_time)
+
+    torch.save(model.state_dict(), 'data/models/main/%04d.pkl' % (epoch,))
 
     result = []
     num = 0

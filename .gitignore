@@ -4,3 +4,4 @@ data/
 data
 !statistics/*
 *.pyc
+__pycache__

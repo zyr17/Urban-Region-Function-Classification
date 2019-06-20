@@ -5,8 +5,10 @@ import numpy as np
 import time
 import pdb
 import dpn
+import random
 
 torch.manual_seed(19951017)
+random.seed(19951017)
 label_num = 9
 
 with open('data/pickle/train_visit.bucket.pkl', 'rb') as f:
@@ -241,10 +243,19 @@ class VisitLineDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.x)
 
+def random_transpose(img, rand = -1):
+    #img = np.array, [3, N, N]
+    if rand == -1:
+        rand = random.randint(0,7)
+    p1 = (rand & 1) + 1
+    p2 = ((rand >> 1) & 1) * 2 - 1
+    p3 = (rand >> 2) * 2 - 1
+    return np.array(img.transpose(0, p1, 3 - p1)[:,::p2,::p3])
+
 class VisitDataset(torch.utils.data.Dataset):
     def __init__(self, x1, x2, x3, x4, y):
         self.x1 = torch.tensor(x1).float()#bucket
-        self.x2 = torch.tensor(x2).float()#image
+        self.x2 = x2#image
         self.x3 = torch.tensor(x3).float()#length
         self.x4loader = []#visitline
         self.x4iter = []
@@ -265,22 +276,10 @@ class VisitDataset(torch.utils.data.Dataset):
         x4[:x4data.shape[0]] = x4data
         x4.reshape(visitline_max * (1 + label_num))
         x4 = torch.tensor(x4).float()
-        return self.x1[index], self.x2[index], self.x3[index], x4, self.y[index]
+        x2 = torch.tensor(random_transpose(self.x2[index])).float()
+        return self.x1[index], x2, self.x3[index], x4, self.y[index]
     def __len__(self):
         return len(self.x1)
-
-def Accuracy(x, y):
-    xi = 0
-    yi = y
-    for i in range(len(x)):
-        if x[xi] < x[i]:
-            xi = i
-    '''
-    for i in range(len(y)):
-        if y[yi] < y[i]:
-            yi = i
-    '''
-    return xi == yi
 
 batch_size = 50
 epoch_number = 1000

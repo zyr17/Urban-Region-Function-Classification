@@ -282,7 +282,7 @@ def Accuracy(x, y):
     '''
     return xi == yi
 
-batch_size = 100
+batch_size = 50
 epoch_number = 1000
 learning_rate = 0.0001
 #modelname = 'CNN'
@@ -308,7 +308,7 @@ elif modelname == 'concat_after':
 model = cuda(model)
 loss = torch.nn.CrossEntropyLoss()
 
-start_epoch = 80
+start_epoch = -1
 if start_epoch != -1:
     model.load_state_dict(torch.load(modelfile + '%04d.pkl' % (start_epoch,)))
 
@@ -363,3 +363,4 @@ for epoch in range(start_epoch + 1, epoch_number):
             num += 1
     with open('data/results/' + modelname + '_' + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
         f.write('\n'.join(result))
+

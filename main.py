@@ -6,6 +6,7 @@ import time
 import pdb
 import dpn
 import random
+import os
 
 torch.manual_seed(19951017)
 random.seed(19951017)
@@ -286,7 +287,14 @@ epoch_number = 1000
 learning_rate = 0.0001
 #modelname = 'CNN'
 modelname = 'concat_after'
-modelfile = 'data/models/dpn/'
+savename = 'transpose'
+modelfolder = 'data/models/' + savename + '/'
+resultfolder = 'data/results-' + savename + '/'
+if not os.path.exists(modelfolder):
+    os.mkdir(modelfolder)
+if not os.path.exists(resultfolder):
+    os.mkdir(resultfolder)
+start_epoch = -1
 
 if (modelname != 'FC'):
     train_visit = train_visit.reshape(-1, 7, 26, 24)
@@ -307,9 +315,8 @@ elif modelname == 'concat_after':
 model = cuda(model)
 loss = torch.nn.CrossEntropyLoss()
 
-start_epoch = -1
 if start_epoch != -1:
-    model.load_state_dict(torch.load(modelfile + '%04d.pkl' % (start_epoch,)))
+    model.load_state_dict(torch.load(modelfolder + '%04d.pkl' % (start_epoch,)))
 
 print('start training')
 for epoch in range(start_epoch + 1, epoch_number):
@@ -327,7 +334,7 @@ for epoch in range(start_epoch + 1, epoch_number):
         opt.zero_grad()
         pred = model(input, image, length, visitline)
         L = loss(pred, label)
-        if (batch_count % (len(train_label) // 10 // batch_size) == 0):
+        if ((batch_count + 1) % (len(train_label) // 10 // batch_size) == 0):
             print(batch_count, L.data.item())
         L.backward()
         opt.step()
@@ -345,7 +352,7 @@ for epoch in range(start_epoch + 1, epoch_number):
     correct /= len(val_visit)
     print(correct, 'use time:', time.clock() - start_time)
 
-    torch.save(model.state_dict(), modelfile + '%04d.pkl' % (epoch,))
+    torch.save(model.state_dict(), modelfolder + '%04d.pkl' % (epoch,))
 
     result = []
     num = 0
@@ -360,6 +367,6 @@ for epoch in range(start_epoch + 1, epoch_number):
                     oneres = i
             result.append(str(num).zfill(6) + '\t00' + str(oneres + 1))
             num += 1
-    with open('data/results/' + modelname + '_' + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
+    with open(resultfolder + str(epoch).zfill(5) + '_' + str(correct) +  '.txt', 'w') as f:
         f.write('\n'.join(result))
 

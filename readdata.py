@@ -7,14 +7,16 @@ import sys
 import random
 
 DF = 'data/'
-train_image_folder = DF + 'train_image/'
-train_visit_folder = DF + 'train_visit/'
-test_image_folder = DF + 'test_image/'
-test_visit_folder = DF + 'test_visit/'
+train_image_folder = DF + 'original/train_image/'
+train_visit_folder = DF + 'original/train_visit/'
+test_image_folder = DF + 'original/test_image/'
+test_visit_folder = DF + 'original/test_visit/'
 
 def read_train_data(start, end):
     tilist = os.listdir(train_image_folder)
     tvlist = os.listdir(train_visit_folder)
+    tilist.sort()
+    tvlist.sort()
 
     train_label = []
     train_image = []
@@ -46,13 +48,15 @@ def read_train_data(start, end):
     #print(train_image, train_visit, train_label)
     
     print('saving...')
-    pickle.dump(train_image, open('train_image_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
-    pickle.dump(train_visit, open('train_visit_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
-    pickle.dump(train_label, open('train_label_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
+    pickle.dump(train_image, open(DF + 'pickle/part/train_image_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
+    pickle.dump(train_visit, open(DF + 'pickle/part/train_visit_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
+    pickle.dump(train_label, open(DF + 'pickle/part/train_label_' + str(start) + '_' + str(end) + '.pkl', 'wb'))
 
 def read_test_data(start = 0, end = 10000):
     tilist = os.listdir(test_image_folder)
     tvlist = os.listdir(test_visit_folder)
+    tilist.sort()
+    tvlist.sort()
 
     test_image = []
     test_visit = []
@@ -94,7 +98,7 @@ def getids(filename):
             res.append(j[0])
     return res
 
-def visit2bucket(filename):
+def visit2bucket(filename, folder):
     '''
     #min: 2018100100 max: 2019033100
     with open(filename, 'rb') as f:
@@ -126,7 +130,7 @@ def visit2bucket(filename):
                         quick[k - 2010000000] = nowtime
                     pos = int((nowtime - starttime) / 60 / 60)
                     res[num][pos] += 1
-        with open(filename[:-4] + '.bucket.pkl', 'wb') as f2:
+        with open(folder + filename[-17:], 'wb') as f2:
             pickle.dump(res, f2)
         return res
 
@@ -195,17 +199,18 @@ def remove_short_expand(starti, visitname, labelname, outputname, threshold = 23
         pickle.dump([othervisit, otherlabel], f)
 
 if __name__ == '__main__':
-    ''' 
-    read_train_data(0, 10000)
-    read_train_data(10000, 20000)
-    read_train_data(20000, 30000)
-    read_train_data(30000, 40000)
+    '''
+    for i in range(0, 400000, 10000):
+        read_train_data(i, i + 10000)
+    for i in range(0, 100000, 10000):
+        read_test_data(i, i + 10000)
     '''
     '''
     read_test_data()
     visit2bucket('test_visit_0_10000.pkl')
     '''
     ''' 
+    #count uuid
     res = []
     for i in getids('pickle/train_visit_0_10000.pkl'):
         res.append(i)
@@ -235,15 +240,21 @@ if __name__ == '__main__':
     '''
 
     '''
-    res = visit2bucket('pickle/train_visit_0_10000.pkl')
+    #visit2bucket
+    #res = visit2bucket('pickle/train_visit_0_10000.pkl')
     #for i in res:
     #    for j in i:
     #        print(str(j) + ' ', end = '')
     #    print()
     #exit()
-    res = visit2bucket('pickle/train_visit_10000_20000.pkl')
-    res = visit2bucket('pickle/train_visit_20000_30000.pkl')
-    res = visit2bucket('pickle/train_visit_30000_40000.pkl')
+    for i in range(20000, 400000, 10000):
+        print('i', i)
+        folder = 'data/pickle/train_visit_bucket/'
+        visit2bucket('data/pickle/train_visit/%06d_%06d.pkl' % (i, i + 10000), folder)
+    for i in range(0, 100000, 10000):
+        print('i', i)
+        folder = 'data/pickle/test_visit_bucket/'
+        visit2bucket('data/pickle/test_visit/%06d_%06d.pkl' % (i, i + 10000), folder)
     '''
     '''
     concat([
@@ -266,10 +277,13 @@ if __name__ == '__main__':
     ], 'train_visit.bucket.pkl')
     '''
     '''
-    visit_data_expand('data/pickle/part/train_visit_with_id_0_10000.pkl', 'data/pickle/part/train_visit_0_10000.pkl')
-    visit_data_expand('data/pickle/part/train_visit_with_id_10000_20000.pkl', 'data/pickle/part/train_visit_10000_20000.pkl')
-    visit_data_expand('data/pickle/part/train_visit_with_id_20000_30000.pkl', 'data/pickle/part/train_visit_20000_30000.pkl')
-    visit_data_expand('E:/BaiduNetdiskDownload/初赛赛题/pickle/train_visit_with_id_30000_40000.pkl', 'data/pickle/part/train_visit_30000_40000.pkl')
+    #with id to without id
+    for i in range(250000, 400000, 10000):
+        print('train', i)
+        visit_data_expand('data/pickle/train_visit/%06d_%06d.pkl' % (i, i + 10000), 'data/pickle/train_visit_without_id/%06d_%06d.pkl' % (i, i + 10000))
+    for i in range(0, 100000, 10000):
+        print('test', i)
+        visit_data_expand('data/pickle/test_visit/%06d_%06d.pkl' % (i, i + 10000), 'data/pickle/test_visit_without_id/%06d_%06d.pkl' % (i, i + 10000))
     '''
     #visit_data_expand('E:/BaiduNetdiskDownload/初赛赛题/pickle/test_visit_with_id.pkl', 'data/pickle/test_visit.pkl')
     #remove_short_expand('data/pickle/test_visit.pkl', 'data/pickle/test_label.pkl', 'test_visitline_23.pkl')
@@ -303,14 +317,14 @@ if __name__ == '__main__':
                     bucket[len(num)] += 1
     res.write('\n'.join([str(x) for x in bucket]))
     '''
-    '''
+    
     #long visitline
-    for i in range(0, 40000, 10000):
-        visit = 'data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000)
-        label = 'data/pickle/part/train_label_%d_%d.pkl' % (i, i + 10000)
-        res = 'data/pickle/part/visitline_23/%d_%d.pkl' % (i, i + 10000)
+    for i in range(0, 400000, 10000):
+        visit = 'data/pickle/train_visit/%06d_%06d.pkl' % (i, i + 10000)
+        label = 'data/pickle/train_label/%06d_%06d.pkl' % (i, i + 10000)
+        res = 'data/pickle/visitline_23/%06d_%06d.pkl' % (i, i + 10000)
         remove_short_expand(i, visit, label, res)
-    '''
+    
     '''
     #combine vilitline
     totalv = []

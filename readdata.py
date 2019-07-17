@@ -5,6 +5,7 @@ import numpy as np
 import time
 import sys
 import random
+import re
 
 DF = 'data/'
 train_image_folder = DF + 'original/train_image/'
@@ -166,18 +167,20 @@ def visit_data_expand(filename, outputname):
         print(num)
     pickle.dump(res, open(outputname, 'wb'))
 
-def remove_short_expand(starti, visitname, labelname, outputname, threshold = 23):
+def remove_short_expand(starti, visitname, labelname, outputname, istestdata = False, threshold = 23):
     with open(visitname, 'rb') as f:
         visits = pickle.load(f)
-    with open(labelname, 'rb') as f:
-        labels = pickle.load(f)
+    labels = np.zeros(len(visits))
+    if not istestdata:
+        with open(labelname, 'rb') as f:
+            labels = pickle.load(f)
     resvisit = []
     reslabel = []
     othervisit = []
     otherlabel = []
     for num in range(len(visits)):
         if num % 100 == 0:
-            print(num, len(resvisit))
+            print(num, len(othervisit))
         visit = visits[num]
         label = labels[num]
         flag = 0
@@ -190,13 +193,35 @@ def remove_short_expand(starti, visitname, labelname, outputname, threshold = 23
                     resvisit.append(line)
                     reslabel.append(label)
                 flag = 1 - flag
+                if istestdata:
+                    flag = 0
     reslabel = np.array(reslabel, dtype='int8')
     otherlabel = np.array(otherlabel, dtype='int32')
     print('save', outputname)
-    with open(outputname, 'wb') as f:
-        pickle.dump([resvisit, reslabel], f)
+    if not istestdata:
+        with open(outputname, 'wb') as f:
+            pickle.dump([resvisit, reslabel], f)
     with open(outputname + '.1', 'wb') as f:
         pickle.dump([othervisit, otherlabel], f)
+
+def combine(folder, start = 0, end = 400000, oldstep = 10000, newstep = 100000, suffix = ''):
+    isarray = False
+    for i in range(start, end, newstep):
+        res = []
+        savefile = '%sc_%06d_%06d.pkl%s' % (folder, i, i + newstep, suffix)
+        for j in range(i, i + newstep, oldstep):
+            filename = '%s%06d_%06d.pkl%s' % (folder, j, j + oldstep, suffix)
+            print(filename)
+            data = pickle.load(open(filename, 'rb'))
+            isarray = isinstance(data, np.ndarray)
+            if isarray:
+                res.append(data)
+            else:
+                res += data
+        if isarray:
+            res = np.concatenate(res)
+        print('save', savefile)
+        pickle.dump(res, open(savefile, 'wb'))
 
 if __name__ == '__main__':
     '''
@@ -317,14 +342,20 @@ if __name__ == '__main__':
                     bucket[len(num)] += 1
     res.write('\n'.join([str(x) for x in bucket]))
     '''
-    
+    '''
     #long visitline
     for i in range(0, 400000, 10000):
         visit = 'data/pickle/train_visit/%06d_%06d.pkl' % (i, i + 10000)
         label = 'data/pickle/train_label/%06d_%06d.pkl' % (i, i + 10000)
-        res = 'data/pickle/visitline_23/%06d_%06d.pkl' % (i, i + 10000)
+        res = 'data/pickle/visitline_train/%06d_%06d.pkl' % (i, i + 10000)
         remove_short_expand(i, visit, label, res)
     
+    for i in range(0, 100000, 10000):
+        visit = 'data/pickle/test_visit/%06d_%06d.pkl' % (i, i + 10000)
+        label = 'data/pickle/test_label/%06d_%06d.pkl' % (i, i + 10000)
+        res = 'data/pickle/visitline_test/%06d_%06d.pkl' % (i, i + 10000)
+        remove_short_expand(i, visit, label, res, True)
+    '''
     '''
     #combine vilitline
     totalv = []
@@ -341,30 +372,73 @@ if __name__ == '__main__':
     '''
     '''
     #shuffle visitline
-    [train_x, train_y] = pickle.load(open('data/pickle/train_visitline_23.pkl', 'rb'))
-    print('read done')
-    zipped = list(zip(train_x, train_y))
-    print(len(zipped), zipped[0])
-    random.shuffle(zipped)
-    print('random')
-    [train_x, train_y] = list(zip(*zipped))
-    print('zip2')
-    train_y = np.array(train_y, dtype='int8')
-    print(len(train_x), len(train_y))
-    print(train_x[0], train_y[0])
-    pickle.dump([train_x, train_y], open('data/pickle/train_visitline_23_shuffle.pkl', 'wb'))
+    for i in range(0, 400000, 100000):
+        openfile = 'data/pickle/visitline_train/c_%06d_%06d.pkl' % (i, i + 100000)
+        savefile = 'data/pickle/visitline_train_shuffle/c_%06d_%06d.pkl' % (i, i + 100000)
+        print(openfile, savefile)
+        [train_x, train_y] = pickle.load(open(openfile, 'rb'))
+        print('read done')
+        zipped = list(zip(train_x, train_y))
+        print(len(zipped), zipped[0])
+        random.shuffle(zipped)
+        print('random')
+        [train_x, train_y] = list(zip(*zipped))
+        print('zip2')
+        train_y = np.array(train_y, dtype='int8')
+        print(len(train_x), len(train_y))
+        print(train_x[0], train_y[0])
+        pickle.dump([train_x, train_y], open(savefile, 'wb'))
     '''
     '''
     #visit length
-    lengths = []
-    for i in range(0, 40000, 10000):
-        data = pickle.load(open('data/pickle/part/train_visit_%d_%d.pkl' % (i, i + 10000), 'rb'))
-        print('pickle done')
-        for one in data:
-            lengths.append(list(map(len, one)))
-        print('map done')
-    res = np.zeros((40000, 26 * 7 * 24), dtype='int32')
-    for num, i in enumerate(lengths):
-        for j in i:
-            res[num][j] += 1
+    for i in range(0, 100000, 10000):
+        filename = 'data/pickle/test_visit/%06d_%06d.pkl' % (i, i + 10000)
+        savename = 'data/pickle/test_visit_length/%06d_%06d.pkl' % (i, i + 10000)
+        print(filename)
+        data = pickle.load(open(filename, 'rb'))
+        length = [list(map(len, x)) for x in data]
+        result = np.zeros((10000, 24 * 7 * 26), dtype = 'int32')
+        for num, one in enumerate(length):
+            for j in one:
+                result[num][j] += 1
+        pickle.dump(result, open(savename, 'wb'))
+    '''
+    '''
+    folders = [x for x in os.listdir('data/pickle/') if not re.search('with_id|_visit$', x)]
+    folders.sort()
+    #print(folders)
+    for folder in folders:
+        end = 400000
+        if folder[:4] == 'test':
+            end = 100000
+        print(folder, end)
+        combine('data/pickle/' + folder + '/', 0, end)
+    '''
+    #combine('data/pickle/visitline_train/', 0, 100000)
+    #combine('data/pickle/visitline_test/', 0, 100000)
+    '''
+    #combine visitline
+    #combine('data/pickle/visitline_train/', 0, 400000)
+    #combine('data/pickle/visitline_train_1/', 0, 400000)
+    for i in range(0, 400000, 100000):
+        openfile = 'data/pickle/visitline_train/c_%06d_%06d.pkl' % (i, i + 100000)
+        savefile = 'data/pickle/visitline_train/d_%06d_%06d.pkl' % (i, i + 100000)
+        data = pickle.load(open(openfile, 'rb'))
+        X = data[::2]
+        y = np.concatenate(data[1::2])
+        x = []
+        for xx in X:
+            x += xx
+        print(len(x), len(y))
+        pickle.dump([x, y], open(savefile, 'wb'))
+        openfile = 'data/pickle/visitline_train_1/c_%06d_%06d.pkl' % (i, i + 100000)
+        savefile = 'data/pickle/visitline_train_1/d_%06d_%06d.pkl' % (i, i + 100000)
+        data = pickle.load(open(openfile, 'rb'))
+        X = data[::2]
+        y = np.concatenate(data[1::2])
+        x = []
+        for xx in X:
+            x += xx
+        print(len(x), len(y))
+        pickle.dump([x, y], open(savefile, 'wb'))
     '''

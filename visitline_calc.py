@@ -95,48 +95,62 @@ def Accuracy(x, y):
             yi = i
     return xi == yi
 
-if __name__ == '__main__':
-    #filename = 'data/pickle/part/visitline_23/test.pkl'
-    filename = 'data/pickle/train_visitline_23.pkl.1'
-    filename = 'data/pickle/test_visitline_23.pkl.1'
+def read_data(filename, batch_size = 100, val_part = 0.001):
+    print('read_data', filename)
+    x, y = pickle.load(open(filename, 'rb'))
+    val_line = int(len(x) * (1 - val_part))
+    #print(len(x), val_line)
+    x = x[:val_line]
+    y = y[:val_line]
+    dataset = LineDataset(x, y)
+    return torch.utils.data.DataLoader(dataset, batch_size, True, collate_fn=dataset.collate_fn)
 
-    train_line, train_id = pickle.load(open(filename, 'rb'))
-    print('pickle load over')
+if __name__ == '__main__':
+    filenames = ['data/pickle/visitline_test/c_000000_100000.pkl']
+    #filenames = ['data/pickle/visitline_train_1/c_%06d_%06d.pkl' % (x, x + 100000) for x in range(0, 400000, 100000)]
+
+    savenames = ['data/pickle/visitline_test_res/c_000000_100000.pkl']
+    #savenames = ['data/pickle/visitline_train_res/c_%06d_%06d.pkl' % (x, x + 100000) for x in range(0, 400000, 100000)]
+
+    modelname = 'data/models/visitline_15_161309/0012.pkl'
+
+    #train_line, train_id = pickle.load(open(filename, 'rb'))
+    #print('pickle load over')
 
     #train_line = train_line[9000:10000]
     #train_id = train_id[9000:10000]
     #pickle.dump([train_line, raw_label[:1000]], open('data/pickle/part/visitline_23/test.pkl', 'wb'))
 
-    batch_size = 1000
+    batch_size = 1024
 
-    train_dataset = LineDataset(train_line, train_id)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size, True, collate_fn=train_dataset.collate_fn)
-    model = cuda(CNN())
+    for index, filename, savename in zip(range(0, 100000 * len(filenames), 100000), filenames, savenames):
+        print(filename, savename)
 
-    print('start eval')
+        train_loader = read_data(filename, batch_size, 0)
+        model = cuda(CNN())
 
-    save_count = 42
-    model.load_state_dict(torch.load('data/models/visitline.model'))
+        print('start eval')
 
-    res = [[] for x in range(10000)]
+        model.load_state_dict(torch.load(modelname))
 
-    count = 0
+        res = [[] for x in range(100000)]
 
-    for input, label, lengths in train_loader:
-        count += 1
-        if count % 10 == 0:
-            print(count)
-        model.eval()
-        pred = model(input)
-        for num in range(len(pred)):
-            l = label[num]
-            length = lengths[num]
-            p = pred[num]
-            #print(l, length, p)
-            res[l].append([length] + p.tolist())
+        count = 0
 
-    for num in range(len(res)):
-        res[num] = np.array(res[num], dtype='float')
+        for input, label, lengths in train_loader:
+            count += 1
+            if count % 10 == 0:
+                print(count)
+            model.eval()
+            pred = model(input)
+            for num in range(len(pred)):
+                l = label[num] - index
+                length = lengths[num]
+                p = pred[num]
+                #print(l, length, p)
+                res[l].append([length] + p.tolist())
 
-    #pickle.dump(res, open('data/pickle/train_visitline_res.pkl', 'wb'))
-    pickle.dump(res, open('data/pickle/test_visitline_res.pkl', 'wb'))
+        for num in range(len(res)):
+            res[num] = np.array(res[num], dtype='float')
+
+        pickle.dump(res, open(savename, 'wb'))
